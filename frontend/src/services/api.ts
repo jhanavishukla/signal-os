@@ -230,16 +230,19 @@ export const apiService = {
   },
 
   async getIntelligence(params?: { industry_id?: number; topic_id?: number; min_importance?: number }): Promise<IntelligenceDevelopment[]> {
-    try {
-      const url = new URL(`${window.location.origin}${API_BASE}/intelligence`);
-      if (params?.industry_id) url.searchParams.set("industry_id", String(params.industry_id));
-      if (params?.topic_id) url.searchParams.set("topic_id", String(params.topic_id));
-      if (params?.min_importance) url.searchParams.set("min_importance", String(params.min_importance));
+    const url = new URL(`${window.location.origin}${API_BASE}/intelligence`);
+    if (params?.industry_id) url.searchParams.set("industry_id", String(params.industry_id));
+    if (params?.topic_id) url.searchParams.set("topic_id", String(params.topic_id));
+    if (params?.min_importance) url.searchParams.set("min_importance", String(params.min_importance));
 
+    try {
       const res = await fetch(url.toString());
-      if (!res.ok) throw new Error("API not reachable");
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       return await res.json();
-    } catch {
+    } catch (err) {
+      // In development or when offline, fallback to filtered mockData
+      // while logging the network notice
+      console.warn("API request failed, falling back to mock dataset:", err);
       let filtered = [...mockData.developments];
       if (params?.industry_id) filtered = filtered.filter(d => d.industry_id === params.industry_id);
       if (params?.topic_id) filtered = filtered.filter(d => d.topic_id === params.topic_id);

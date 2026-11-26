@@ -1,27 +1,32 @@
 import React, { useState } from 'react';
 import { 
   Radio, 
-  Filter, 
   Search, 
-  SlidersHorizontal, 
   ArrowUpDown, 
-  TrendingUp,
-  Sparkles,
   Layers
 } from 'lucide-react';
 import { IntelligenceDevelopment, Industry, Topic } from '../types';
 import { DevelopmentCard } from '../components/DevelopmentCard';
+import { FeedSkeleton } from '../components/FeedSkeleton';
+import { FeedEmptyState } from '../components/FeedEmptyState';
+import { FeedErrorState } from '../components/FeedErrorState';
 
 interface RadarPageProps {
   developments: IntelligenceDevelopment[];
   industries: Industry[];
   topics: Topic[];
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export const RadarPage: React.FC<RadarPageProps> = ({
   developments,
   industries,
-  topics
+  topics,
+  isLoading = false,
+  error = null,
+  onRetry
 }) => {
   const [selectedIndustry, setSelectedIndustry] = useState<number | 'all'>('all');
   const [selectedTopic, setSelectedTopic] = useState<number | 'all'>('all');
@@ -33,6 +38,15 @@ export const RadarPage: React.FC<RadarPageProps> = ({
   const availableTopics = selectedIndustry === 'all' 
     ? topics 
     : topics.filter(t => t.industry_id === selectedIndustry);
+
+  const hasActiveFilters = selectedIndustry !== 'all' || selectedTopic !== 'all' || searchQuery.trim() !== '' || minImportance > 7.0;
+
+  const handleResetFilters = () => {
+    setSelectedIndustry('all');
+    setSelectedTopic('all');
+    setSearchQuery('');
+    setMinImportance(7.0);
+  };
 
   // Filter developments
   const filteredDevelopments = developments.filter(dev => {
@@ -177,18 +191,34 @@ export const RadarPage: React.FC<RadarPageProps> = ({
       {/* Developments Stream */}
       <div className="space-y-4">
         <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-          <span>Showing <strong className="text-white">{filteredDevelopments.length}</strong> intelligence developments</span>
+          <span>
+            {isLoading ? (
+              <span className="inline-block h-4 w-32 bg-surface-subtle animate-pulse rounded"></span>
+            ) : (
+              <>Showing <strong className="text-white">{filteredDevelopments.length}</strong> intelligence developments</>
+            )}
+          </span>
           <span>Dual Score Metrics: <strong className="text-signal-cyan">Relevance Match</strong> vs <strong className="text-white">Impact (1-10)</strong></span>
         </div>
 
-        {filteredDevelopments.length === 0 ? (
-          <div className="text-center py-16 rounded-xl border border-dashed border-border-subtle bg-surface-card/40">
-            <Radio className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-slate-200">No matching developments found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Try adjusting your sector filter, clearing keywords, or lowering the impact threshold.
-            </p>
-          </div>
+        {isLoading ? (
+          <FeedSkeleton count={4} />
+        ) : error ? (
+          <FeedErrorState 
+            message={error} 
+            onRetry={onRetry || (() => {})} 
+          />
+        ) : filteredDevelopments.length === 0 ? (
+          <FeedEmptyState
+            title="No matching developments found"
+            description={
+              hasActiveFilters
+                ? "No signals match the combination of active filters, keyword query, and impact threshold."
+                : "No intelligence updates have been recorded yet."
+            }
+            hasFilters={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+          />
         ) : (
           filteredDevelopments.map(dev => (
             <DevelopmentCard key={dev.id} development={dev} />

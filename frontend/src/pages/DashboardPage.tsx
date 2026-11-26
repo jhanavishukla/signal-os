@@ -4,14 +4,14 @@ import {
   TrendingUp, 
   Radio, 
   ArrowRight, 
-  Layers, 
   FileText, 
-  CheckCircle2,
-  Zap,
-  Target
+  Zap
 } from 'lucide-react';
-import { IntelligenceDevelopment, Briefing, Industry, Topic, UserProfile } from '../types';
+import { IntelligenceDevelopment, Briefing, Industry, UserProfile } from '../types';
 import { DevelopmentCard } from '../components/DevelopmentCard';
+import { FeedSkeleton } from '../components/FeedSkeleton';
+import { FeedEmptyState } from '../components/FeedEmptyState';
+import { FeedErrorState } from '../components/FeedErrorState';
 import { NavTab } from '../components/Sidebar';
 
 interface DashboardPageProps {
@@ -19,6 +19,9 @@ interface DashboardPageProps {
   developments: IntelligenceDevelopment[];
   briefings: Briefing[];
   industries: Industry[];
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onNavigate: (tab: NavTab) => void;
 }
 
@@ -27,6 +30,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   developments,
   briefings,
   industries,
+  isLoading = false,
+  error = null,
+  onRetry,
   onNavigate
 }) => {
   const topDevelopment = developments[0];
@@ -80,7 +86,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-border-subtle/80 text-left">
           <div>
             <div className="text-xs text-slate-400">High-Impact Signals</div>
-            <div className="text-xl font-bold text-white mt-0.5">{developments.length} Verified</div>
+            <div className="text-xl font-bold text-white mt-0.5">
+              {isLoading ? (
+                <span className="inline-block h-6 w-16 bg-surface-subtle animate-pulse rounded"></span>
+              ) : (
+                `${developments.length} Verified`
+              )}
+            </div>
           </div>
           <div>
             <div className="text-xs text-slate-400">Avg Relevance Match</div>
@@ -99,7 +111,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* Main Grid: Highlighted Development + Executive Briefing Snapshot */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Cols: Featured & Priority Developments */}
+        {/* Left 2 Cols: Featured & Priority Developments (Intelligence Feed) */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -115,21 +127,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </button>
           </div>
 
-          {topDevelopment && (
-            <DevelopmentCard development={topDevelopment} featured={true} />
-          )}
+          {/* Conditional feed rendering: Loading, Error, Empty, or Content */}
+          {isLoading ? (
+            <FeedSkeleton count={3} featured={true} />
+          ) : error ? (
+            <FeedErrorState 
+              message={error} 
+              onRetry={onRetry || (() => onNavigate('radar'))} 
+            />
+          ) : developments.length === 0 ? (
+            <FeedEmptyState
+              title="No updates available right now"
+              description="Your intelligence feed is clear. As new breakthroughs, research papers, or regulatory shifts occur, they will appear here automatically."
+            />
+          ) : (
+            <>
+              {topDevelopment && (
+                <DevelopmentCard development={topDevelopment} featured={true} />
+              )}
 
-          {/* Recent Signals List */}
-          <div className="space-y-4 pt-4">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-              Recently Discovered Developments
-            </h3>
-            <div className="space-y-3">
-              {recentDevelopments.map((dev) => (
-                <DevelopmentCard key={dev.id} development={dev} />
-              ))}
-            </div>
-          </div>
+              {/* Recent Signals List */}
+              {recentDevelopments.length > 0 && (
+                <div className="space-y-4 pt-4">
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+                    Recently Discovered Developments
+                  </h3>
+                  <div className="space-y-3">
+                    {recentDevelopments.map((dev) => (
+                      <DevelopmentCard key={dev.id} development={dev} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Right 1 Col: Briefing Synthesis & Trending Topics */}
